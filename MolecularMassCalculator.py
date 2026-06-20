@@ -6,41 +6,49 @@ from elements import atomic_masses
 class MolecularMassCalculator:
     def __init__(self):
         self.root = tk.Tk()
-        self.root.title("Калькулятор молекулярных масс")
-        self.root.geometry("450x400")
-        self.elements = atomic_masses
+        self.root.title("Калькулятор молекулярной массы")
+        self.root.geometry("500x600")
         self.setup_ui()
+        self.elements = atomic_masses
 
     def setup_ui(self):
-        main_frame = ttk.Frame(self.root, padding=15)
-        main_frame.pack(fill='both', expand=True)
+        title_label = ttk.Label(self.root, text="Калькулятор молекулярной массы",
+                                font=("Comic Sans MS", 16, "bold"))
+        title_label.pack(pady=10)
+        instruction_label = ttk.Label(self.root,
+                                      text="Введите химическую формулу")
+        instruction_label.pack(pady=5)
 
-        ttk.Label(main_frame, text="Введите химическую формулу (например, H2O или Ca(OH)2):").pack(anchor='w',
-                                                                                                   pady=(0, 5))
+        self.formula_var = tk.StringVar() #поле ввода
+        formula_entry = ttk.Entry(self.root, textvariable=self.formula_var,
+                                  font=("Comic Sans MS", 12), width=40)
+        formula_entry.pack(pady=10)
+        formula_entry.bind('<Return>', lambda event: self.calculate_mass())
 
-        self.formula_var = tk.StringVar()
-        self.formula_entry = ttk.Entry(main_frame, textvariable=self.formula_var, font=("Arial", 12))
-        self.formula_entry.pack(fill='x', pady=(0, 10))
-        self.formula_entry.bind('<Return>', lambda event: self.calculate_mass())
+        calculate_btn = ttk.Button(self.root, text="Рассчитать массу",
+                                   command=self.calculate_mass)
+        calculate_btn.pack(pady=5)
 
-        button_frame = ttk.Frame(main_frame)
-        button_frame.pack(fill='x', pady=(0, 10))
+        self.result_text = tk.Text(self.root, height=12, width=60,
+                                   font=("Comic Sans MS", 10), state='disabled')
+        self.result_text.pack(pady=10, padx=10)
 
-        ttk.Button(button_frame, text="Рассчитать", command=self.calculate_mass).pack(side='left', padx=(0, 5),
-                                                                                      expand=True, fill='x')
-        ttk.Button(button_frame, text="Очистить", command=self.clear_fields).pack(side='left', expand=True, fill='x')
+        clear_btn = ttk.Button(self.root, text="Очистить",
+                               command=self.clear_fields)
+        clear_btn.pack(pady=5)
 
-        result_frame = ttk.LabelFrame(main_frame, text="Результаты")
-        result_frame.pack(fill='both', expand=True)
+        examples_frame = ttk.LabelFrame(self.root, text="Примеры формул")
+        examples_frame.pack(pady=10, padx=10, fill="x")
 
-        self.result_text = tk.Text(result_frame, font=("Courier New", 10), state='disabled', wrap='word')
-        scrollbar = ttk.Scrollbar(result_frame, orient="vertical", command=self.result_text.yview)
-        self.result_text.configure(yscrollcommand=scrollbar.set)
+        examples = ["H2O - вода", "CO2 - углекислый газ", "C6H12O6 - глюкоза",
+                    "Ca(OH)2 - гашеная известь", "CH3COOH - уксусная кислота"]
 
-        self.result_text.pack(side='left', fill='both', expand=True, padx=5, pady=5)
-        scrollbar.pack(side='right', fill='y', pady=5)
+        for example in examples:
+            example_label = ttk.Label(examples_frame, text=example)
+            example_label.pack(anchor="w", padx=5)
 
     def parse_formula(self, formula):
+
         formula = formula.strip()
         if not formula:
             return None
@@ -53,15 +61,18 @@ class MolecularMassCalculator:
             if formula[i].isupper():
                 element = formula[i]
                 i += 1
+
                 if i < n and formula[i].islower():
                     element += formula[i]
                     i += 1
+
                 count_str = ""
                 while i < n and formula[i].isdigit():
                     count_str += formula[i]
                     i += 1
 
                 count = int(count_str) if count_str else 1
+
                 if element in self.elements:
                     elements_count[element] += count
                 else:
@@ -70,6 +81,7 @@ class MolecularMassCalculator:
             elif formula[i] == '(':
                 j = i + 1
                 bracket_count = 1
+
                 while j < n and bracket_count > 0:
                     if formula[j] == '(':
                         bracket_count += 1
@@ -79,8 +91,10 @@ class MolecularMassCalculator:
 
                 if bracket_count != 0:
                     raise ValueError("Незакрытая скобка")
+
                 inner_formula = formula[i + 1:j - 1]
                 group_elements = self.parse_formula(inner_formula)
+
                 i = j
                 count_str = ""
                 while i < n and formula[i].isdigit():
@@ -88,6 +102,7 @@ class MolecularMassCalculator:
                     i += 1
 
                 count = int(count_str) if count_str else 1
+
                 if group_elements:
                     for element, element_count in group_elements.items():
                         elements_count[element] += element_count * count
@@ -100,10 +115,10 @@ class MolecularMassCalculator:
         return dict(elements_count)
 
     def calculate_mass(self):
-        formula = self.formula_var.get().strip()
+        formula = self.formula_var.get()
 
         if not formula:
-            messagebox.showwarning("Внимание", "Поле ввода пустое")
+            messagebox.showwarning("Внимание", "Введите химическую формулу")
             return
 
         try:
@@ -114,20 +129,27 @@ class MolecularMassCalculator:
                 return
 
             total_mass = 0.0
-            result_lines = [f"Формула: {formula}", "═" * 40]
+            result_lines = []
 
             for element, count in sorted(elements.items()):
                 atomic_mass = self.elements[element]
                 element_mass = atomic_mass * count
                 total_mass += element_mass
-                result_lines.append(f"{element:<3}: {count:>3} × {atomic_mass:>7.3f} = {element_mass:>8.3f}")
-
-            result_lines.append("═" * 40)
-            result_lines.append(f"Масса: {total_mass:.3f} г/моль")
+                result_lines.append(f"{element:<3}: {count:>3} × {atomic_mass:>7.3f} = {element_mass:>8.3f} г/моль")
 
             self.result_text.config(state='normal')
             self.result_text.delete(1.0, tk.END)
-            self.result_text.insert(tk.END, "\n".join(result_lines))
+
+            self.result_text.insert(tk.END, f"Формула: {formula}\n")
+            self.result_text.insert(tk.END, "=" * 45 + "\n")
+
+            for line in result_lines:
+                self.result_text.insert(tk.END, line + "\n")
+
+            self.result_text.insert(tk.END, "=" * 45 + "\n")
+            self.result_text.insert(tk.END, f"Молекулярная масса: {total_mass:.3f} г/моль\n")
+            self.result_text.insert(tk.END, f"Округленно:       {round(total_mass, 2)} г/моль\n")
+
             self.result_text.config(state='disabled')
 
         except ValueError as e:
